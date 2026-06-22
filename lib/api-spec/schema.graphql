@@ -1,0 +1,41 @@
+type Product {
+  id: Int!
+  name: String!
+  brand: String
+  style: String!
+  heelHeight: String
+  basePrice: Float!
+  salePrice: Float
+  primaryImage: String
+  isNew: Boolean
+  isFeatured: Boolean
+}
+
+type OrderItem {
+  skuId: Int!
+  quantity: Int!
+  unitPrice: Float!
+}
+
+type Order {
+  id: Int!
+  status: String!
+  total: Float!
+  trackingNumber: String
+  createdAt: String!
+  items: [OrderItem]
+}
+
+type User {
+  id: Int!
+  email: String!
+  fullName: String!
+  role: String!
+}
+
+type Query {
+  products(limit: Int, offset: Int, brand: String, style: String): [Product]
+  product(id: Int!): Product
+  orders(userId: Int!): [Order]
+  me(userId: Int!): User
+}

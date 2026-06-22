@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SoleHer — Women's Shoe Store"
+version = "1.0.0"
+id = "artifacts/solehr"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18149
+
+[services.development]
+run = "pnpm --filter @workspace/solehr run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/solehr", "run", "build" ]
+publicDir = "artifacts/solehr/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18149"
+BASE_PATH = "/"

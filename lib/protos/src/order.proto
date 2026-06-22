@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package order;
+
+service OrderService {
+  rpc ListOrders (UserRequest) returns (ListOrdersResponse);
+  rpc PlaceOrder (PlaceOrderRequest) returns (Order);
+  rpc GetOrder (GetOrderRequest) returns (Order);
+  rpc CancelOrder (CancelOrderRequest) returns (Order);
+  
+  rpc GetWishlist (UserRequest) returns (WishlistResponse);
+  rpc AddToWishlist (AddToWishlistRequest) returns (WishlistItem);
+  rpc RemoveFromWishlist (RemoveFromWishlistRequest) returns (Empty);
+  
+  rpc ListAddresses (UserRequest) returns (ListAddressesResponse);
+  rpc CreateAddress (CreateAddressRequest) returns (Address);
+  rpc DeleteAddress (DeleteAddressRequest) returns (Empty);
+}
+
+message Empty {}
+
+message UserRequest {
+  int32 user_id = 1;
+}
+
+message ListOrdersResponse {
+  repeated OrderSummary items = 1;
+}
+
+message OrderSummary {
+  int32 id = 1;
+  string status = 2;
+  double total = 3;
+  int32 item_count = 4;
+  optional string primary_image = 5;
+  optional string tracking_number = 6;
+  string created_at = 7;
+}
+
+message PlaceOrderRequest {
+  int32 user_id = 1;
+  repeated OrderItemInput items = 2;
+  int32 shipping_address_id = 3;
+  optional string notes = 4;
+}
+
+message OrderItemInput {
+  int32 sku_id = 1;
+  int32 quantity = 2;
+}
+
+message GetOrderRequest {
+  int32 user_id = 1;
+  int32 order_id = 2;
+}
+
+message CancelOrderRequest {
+  int32 user_id = 1;
+  int32 order_id = 2;
+}
+
+message Order {
+  int32 id = 1;
+  string status = 2;
+  double total = 3;
+  optional string tracking_number = 4;
+  optional string carrier = 5;
+  optional string notes = 6;
+  optional string estimated_delivery = 7;
+  optional Address shipping_address = 8;
+  repeated OrderItem items = 9;
+  string created_at = 10;
+  optional string updated_at = 11;
+}
+
+message OrderItem {
+  int32 id = 1;
+  int32 sku_id = 2;
+  int32 quantity = 3;
+  double unit_price = 4;
+  SkuInfo sku = 5;
+  optional string product_name = 6;
+  optional string product_image = 7;
+}
+
+message SkuInfo {
+  int32 id = 1;
+  int32 product_id = 2;
+  double size_eu = 3;
+  optional double size_us = 4;
+  optional double size_uk = 5;
+  string colour = 6;
+  optional string colour_hex = 7;
+  int32 stock_quantity = 8;
+  double price = 9;
+  string sku_code = 10;
+}
+
+message Address {
+  int32 id = 1;
+  string label = 2;
+  string street = 3;
+  string city = 4;
+  string country = 5;
+  string postal_code = 6;
+  bool is_default = 7;
+}
+
+message WishlistResponse {
+  repeated WishlistItem items = 1;
+}
+
+message WishlistItem {
+  int32 id = 1;
+  int32 product_id = 2;
+  string added_at = 3;
+  ProductSummary product = 4;
+}
+
+message ProductSummary {
+  int32 id = 1;
+  string name = 2;
+  optional string brand = 3;
+  string style = 4;
+  optional string heel_height = 5;
+  double base_price = 6;
+  double min_price = 7;
+  double max_price = 8;
+  optional double sale_price = 9;
+  optional string primary_image = 10;
+  int32 colour_count = 11;
+  optional bool is_new = 12;
+  optional bool is_featured = 13;
+}
+
+message AddToWishlistRequest {
+  int32 user_id = 1;
+  int32 product_id = 2;
+}
+
+message RemoveFromWishlistRequest {
+  int32 user_id = 1;
+  int32 product_id = 2;
+}
+
+message ListAddressesResponse {
+  repeated Address items = 1;
+}
+
+message CreateAddressRequest {
+  int32 user_id = 1;
+  string label = 2;
+  string street = 3;
+  string city = 4;
+  string country = 5;
+  string postal_code = 6;
+  optional bool is_default = 7;
+}
+
+message DeleteAddressRequest {
+  int32 user_id = 1;
+  int32 address_id = 2;
+}

@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+  --opaque-button-border-intensity: -8;
+
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+
+  /* Warm, luxurious stone/cream palette */
+  --background: 40 33% 98%;      /* #Faf8f5 */
+  --foreground: 20 14% 15%;      /* #2b2826 */
+  
+  --border: 30 15% 85%;          /* Soft taupe border */
+  --input: 30 15% 85%;
+  --ring: 20 14% 15%;            /* Focus ring same as text */
+  
+  --card: 40 33% 98%;            /* Same as bg */
+  --card-foreground: 20 14% 15%;
+  --card-border: 30 15% 85%;
+
+  --popover: 40 33% 98%;
+  --popover-foreground: 20 14% 15%;
+  --popover-border: 30 15% 85%;
+
+  --primary: 20 14% 15%;         /* Dark charcoal/brown */
+  --primary-foreground: 40 33% 98%;
+  
+  --secondary: 30 20% 92%;       /* Light taupe */
+  --secondary-foreground: 20 14% 15%;
+  
+  --muted: 30 20% 92%;
+  --muted-foreground: 24 10% 45%;
+  
+  --accent: 30 20% 92%;
+  --accent-foreground: 20 14% 15%;
+  
+  --destructive: 0 60% 45%;
+  --destructive-foreground: 0 0% 100%;
+
+  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
+  --app-font-serif: 'Playfair Display', serif;
+  --app-font-mono: 'Space Mono', monospace;
+  
+  --radius: 0rem; /* Sharp, sleek edges for luxury */
+}
+
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 20 14% 10%;
+  --foreground: 40 33% 98%;
+  
+  --border: 20 10% 20%;
+  --input: 20 10% 20%;
+  --ring: 40 33% 98%;
+  
+  --card: 20 14% 12%;
+  --card-foreground: 40 33% 98%;
+  --card-border: 20 10% 20%;
+
+  --popover: 20 14% 12%;
+  --popover-foreground: 40 33% 98%;
+  --popover-border: 20 10% 20%;
+
+  --primary: 40 33% 98%;
+  --primary-foreground: 20 14% 10%;
+  
+  --secondary: 20 10% 20%;
+  --secondary-foreground: 40 33% 98%;
+  
+  --muted: 20 10% 20%;
+  --muted-foreground: 30 15% 65%;
+  
+  --accent: 20 10% 20%;
+  --accent-foreground: 40 33% 98%;
+  
+  --destructive: 0 60% 45%;
+  --destructive-foreground: 0 0% 100%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+}

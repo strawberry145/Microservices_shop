@@ -1,0 +1,824 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: SoleHer Women's Shoe Store API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: products
+    description: Product catalogue
+  - name: skus
+    description: SKU (size/colour variants)
+  - name: orders
+    description: Order management
+  - name: wishlist
+    description: Wishlist management
+  - name: addresses
+    description: Shipping addresses
+  - name: auth
+    description: Authentication
+  - name: cart
+    description: Cart operations (server-side sync)
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Products ──────────────────────────────────────────────────────────────
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products with optional filtering
+      parameters:
+        - name: style
+          in: query
+          schema:
+            type: string
+        - name: heelHeight
+          in: query
+          schema:
+            type: string
+        - name: brand
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: sizeEu
+          in: query
+          schema:
+            type: number
+        - name: colour
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, price_asc, price_desc, popular]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 24
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+
+  /products/featured:
+    get:
+      operationId: getFeaturedProducts
+      tags: [products]
+      summary: Get featured / bestseller products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Featured products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductSummary"
+
+  /products/new-arrivals:
+    get:
+      operationId: getNewArrivals
+      tags: [products]
+      summary: Get newest products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: New arrivals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductSummary"
+
+  /products/on-sale:
+    get:
+      operationId: getOnSaleProducts
+      tags: [products]
+      summary: Get products on sale
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Sale products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductSummary"
+
+  /products/catalogue-stats:
+    get:
+      operationId: getCatalogueStats
+      tags: [products]
+      summary: Get aggregate catalogue stats (brands, styles, available sizes, price range)
+      responses:
+        "200":
+          description: Catalogue statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogueStats"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a single product with SKUs and images
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Orders ────────────────────────────────────────────────────────────────
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List current user's orders
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderSummary"
+    post:
+      operationId: placeOrder
+      tags: [orders]
+      summary: Place a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Validation error or stock issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get a single order with items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orders/{id}/cancel:
+    patch:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Cannot cancel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Wishlist ──────────────────────────────────────────────────────────────
+  /wishlist:
+    get:
+      operationId: getWishlist
+      tags: [wishlist]
+      summary: Get current user's wishlist
+      responses:
+        "200":
+          description: Wishlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WishlistItem"
+    post:
+      operationId: addToWishlist
+      tags: [wishlist]
+      summary: Add a product to the wishlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WishlistInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WishlistItem"
+
+  /wishlist/{productId}:
+    delete:
+      operationId: removeFromWishlist
+      tags: [wishlist]
+      summary: Remove a product from the wishlist
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  # ── Addresses ─────────────────────────────────────────────────────────────
+  /addresses:
+    get:
+      operationId: listAddresses
+      tags: [addresses]
+      summary: List current user's saved addresses
+      responses:
+        "200":
+          description: Addresses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Address"
+    post:
+      operationId: createAddress
+      tags: [addresses]
+      summary: Save a new address
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressInput"
+      responses:
+        "201":
+          description: Created address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Address"
+
+  /addresses/{id}:
+    delete:
+      operationId: deleteAddress
+      tags: [addresses]
+      summary: Delete a saved address
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthPayload"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthPayload"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # ── Product schemas ──────────────────────────────────────────────────────
+    ProductImage:
+      type: object
+      required: [id, url, isPrimary, sortOrder]
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        altText:
+          type: ["string", "null"]
+        isPrimary:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    SKU:
+      type: object
+      required: [id, productId, sizeEu, colour, stockQuantity, price, skuCode]
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        sizeEu:
+          type: number
+        sizeUs:
+          type: ["number", "null"]
+        sizeUk:
+          type: ["number", "null"]
+        colour:
+          type: string
+        colourHex:
+          type: ["string", "null"]
+        stockQuantity:
+          type: integer
+        price:
+          type: number
+        skuCode:
+          type: string
+
+    ProductSummary:
+      type: object
+      required: [id, name, brand, style, heelHeight, basePrice, primaryImage, minPrice, maxPrice, colourCount]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: ["string", "null"]
+        style:
+          type: string
+        heelHeight:
+          type: ["string", "null"]
+        basePrice:
+          type: number
+        minPrice:
+          type: number
+        maxPrice:
+          type: number
+        salePrice:
+          type: ["number", "null"]
+        primaryImage:
+          type: ["string", "null"]
+        colourCount:
+          type: integer
+        isNew:
+          type: boolean
+        isFeatured:
+          type: boolean
+
+    ProductDetail:
+      type: object
+      required: [id, name, basePrice, style, images, skus]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        style:
+          type: string
+        heelHeight:
+          type: ["string", "null"]
+        material:
+          type: ["string", "null"]
+        basePrice:
+          type: number
+        category:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        isNew:
+          type: boolean
+        isFeatured:
+          type: boolean
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductImage"
+        skus:
+          type: array
+          items:
+            $ref: "#/components/schemas/SKU"
+
+    ProductListResponse:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSummary"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    CatalogueStats:
+      type: object
+      required: [brands, styles, heelHeights, availableSizes, minPrice, maxPrice, colours]
+      properties:
+        brands:
+          type: array
+          items:
+            type: string
+        styles:
+          type: array
+          items:
+            type: string
+        heelHeights:
+          type: array
+          items:
+            type: string
+        availableSizes:
+          type: array
+          items:
+            type: number
+        colours:
+          type: array
+          items:
+            type: string
+        minPrice:
+          type: number
+        maxPrice:
+          type: number
+
+    # ── Order schemas ────────────────────────────────────────────────────────
+    OrderItemInput:
+      type: object
+      required: [skuId, quantity]
+      properties:
+        skuId:
+          type: integer
+        quantity:
+          type: integer
+
+    OrderInput:
+      type: object
+      required: [items, shippingAddressId]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+        shippingAddressId:
+          type: integer
+        notes:
+          type: string
+
+    OrderItem:
+      type: object
+      required: [id, skuId, quantity, unitPrice, sku]
+      properties:
+        id:
+          type: integer
+        skuId:
+          type: integer
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        sku:
+          $ref: "#/components/schemas/SKU"
+        productName:
+          type: ["string", "null"]
+        productImage:
+          type: ["string", "null"]
+
+    Order:
+      type: object
+      required: [id, status, total, items, createdAt]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+        total:
+          type: number
+        trackingNumber:
+          type: ["string", "null"]
+        carrier:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        estimatedDelivery:
+          type: ["string", "null"]
+        shippingAddress:
+          $ref: "#/components/schemas/Address"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    OrderSummary:
+      type: object
+      required: [id, status, total, itemCount, createdAt]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+        total:
+          type: number
+        itemCount:
+          type: integer
+        primaryImage:
+          type: ["string", "null"]
+        trackingNumber:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    # ── Wishlist schemas ─────────────────────────────────────────────────────
+    WishlistInput:
+      type: object
+      required: [productId]
+      properties:
+        productId:
+          type: integer
+
+    WishlistItem:
+      type: object
+      required: [id, productId, addedAt, product]
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        addedAt:
+          type: string
+        product:
+          $ref: "#/components/schemas/ProductSummary"
+
+    # ── Address schemas ──────────────────────────────────────────────────────
+    AddressInput:
+      type: object
+      required: [label, street, city, country, postalCode]
+      properties:
+        label:
+          type: string
+        street:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+        isDefault:
+          type: boolean
+
+    Address:
+      type: object
+      required: [id, label, street, city, country, postalCode, isDefault]
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        street:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+        isDefault:
+          type: boolean
+
+    # ── Auth schemas ─────────────────────────────────────────────────────────
+    RegisterInput:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        fullName:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthPayload:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    UserProfile:
+      type: object
+      required: [id, email, fullName]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        fullName:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        createdAt:
+          type: string

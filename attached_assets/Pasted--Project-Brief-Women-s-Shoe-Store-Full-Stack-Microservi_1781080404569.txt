@@ -1,0 +1,418 @@
+# Project Brief: Women's Shoe Store — Full-Stack Microservices E-Commerce Platform
+
+## Overview
+Build a production-ready, full-stack e-commerce web application specialising in **women's footwear**. The platform must support a rich product catalogue with shoe-specific attributes (size, colour, heel height, style), a seamless shopping experience, and a robust microservices backend — all written in TypeScript.
+
+---
+
+## Brand & Domain Context
+
+- **Store name:** To be defined (placeholder: `SoleHer`)
+- **Target audience:** Women shopping for casual, formal, athletic, and luxury footwear
+- **Key product attributes:** Size (EU/US/UK), colour, material, heel height (flat / low / mid / high / platform), style (sneakers / heels / boots / sandals / loafers / flats)
+- **Business rules:**
+  - Sizes are tracked individually per SKU (a size 38 red heel is a separate stock unit from size 39)
+  - Out-of-stock sizes are shown but disabled on the product page
+  - Low stock (≤ 3 units) triggers a "Only X left" badge
+  - Orders cannot be placed for out-of-stock sizes
+
+---
+
+## System Architecture
+
+```
+React Client
+     │
+     │  REST + GraphQL (HTTP/1.1 · JSON)
+     ▼()
+API Gateway
+     │
+     │  gRPC (HTTP/2 · Protobuf)
+     ├──────────────────────────────┬──────────────────────────────┐
+     ▼                              ▼                              ▼
+Order Service               Inventory Service           Notification Service
+(Microservice 1)            (Microservice 2)            (Microservice 3)
+     │                              │                              │
+     │ MySQL                        │ Kafka events                 │ JSON store
+     ▼                              ▼                              ▼
+orders · order_items         stock.updated                 notification logs
+users · payments             product.created               (lowdb)
+```
+
+---
+
+## Service Responsibilities
+
+### API Gateway
+- Exposes a **GraphQL API** (`apollo-server-express`) for all client-facing queries and mutations
+- Exposes **REST endpoints** for health checks, webhooks, and non-GraphQL operations
+- Routes all internal traffic to microservices via **gRPC**
+- Handles **JWT authentication** and request validation using `zod`
+- Applies rate limiting on checkout and auth endpoints
+
+### Microservice 1 — Order Service
+- Manages the full order lifecycle: creation, status updates, history, and cancellation
+- Enforces stock validation before confirming any order
+- Persists data in **MySQL** (`orders`, `order_items`, `users`, `payments` tables)
+- Publishes Kafka events: `order.placed`, `order.confirmed`, `order.cancelled`, `order.shipped`, `order.delivered`
+
+### Microservice 2 — Inventory Service
+- Manages the full product catalogue: shoe listings, SKUs per size/colour, pricing, categories, and images
+- Tracks stock per SKU (size + colour combination)
+- Consumes Kafka events from the Order Service to decrement stock in real time
+- Publishes Kafka events: `stock.updated`, `stock.low`, `stock.out`, `product.created`, `product.updated`
+
+### Microservice 3 — Notification Service
+- Listens to Kafka events from Order and Inventory services
+- Sends transactional emails for: order confirmation, shipping update, delivery confirmation, low-stock admin alert
+- Persists all notification logs (recipient, type, timestamp, status) to a **JSON store** using `lowdb`
+
+---
+
+## Frontend — React Client
+
+### Pages to Implement
+
+| Page | Description |
+|---|---|
+| Home | Hero banner, featured collections (new arrivals, bestsellers, sale), category tiles (heels, boots, sneakers, sandals) |
+| Product Listing | Grid layout, filter sidebar (size, colour, heel height, style, price range, brand), sort (price, newest, popularity) |
+| Product Detail | Image gallery, size selector (with stock status per size), colour swatches, heel height badge, add to cart, size guide modal |
+| Shopping Cart | Item list with size/colour info, quantity controls, subtotal, proceed to checkout |
+| Checkout | Shipping address form, order summary, payment form (Stripe-ready UI), promo code field |
+| Order Confirmation | Success message, order ID, itemised summary, estimated delivery date |
+| Order Tracking | Visual status timeline (placed → confirmed → shipped → delivered) |
+| User Account | Profile settings, saved addresses, order history with re-order option |
+| Wishlist | Saved items with stock status, move to cart |
+| Search Results | Full-text search results with same filters as product listing |
+
+### UI/UX Requirements
+- Fully **responsive** — mobile-first design
+- Shoe size guide as a reusable modal component
+- Colour swatches rendered as small filled circles (not dropdowns)
+- Disabled + strikethrough style for out-of-stock sizes
+- "Only X left in your size" low-stock warning on product detail
+- Toast notifications for cart actions, wishlist saves, and errors
+- Skeleton loaders on product grids during data fetching
+
+**State management:** `zustand` (cart, wishlist, auth)  
+**Data fetching:** `@apollo/client` for GraphQL, `axios` for REST  
+**Styling:** `tailwindcss`  
+**Component library:** `shadcn/ui` for base components (modals, toasts, inputs)
+
+---
+
+## Kafka Event Contracts
+
+| Topic | Producer | Consumers | Payload |
+|---|---|---|---|
+| `order.placed` | Order Service | Inventory, Notification | `{ orderId, userId, items[{ skuId, quantity, unitPrice }], total }` |
+| `order.confirmed` | Order Service | Notification | `{ orderId, userId, estimatedDelivery }` |
+| `order.shipped` | Order Service | Notification | `{ orderId, trackingNumber, carrier }` |
+| `order.delivered` | Order Service | Notification | `{ orderId, deliveredAt }` |
+| `order.cancelled` | Order Service | Inventory, Notification | `{ orderId, items[{ skuId, quantity }] }` |
+| `stock.updated` | Inventory Service | — | `{ skuId, productId, newStock }` |
+| `stock.low` | Inventory Service | Notification | `{ skuId, productId, size, colour, currentStock }` |
+| `stock.out` | Inventory Service | Notification | `{ skuId, productId, size, colour }` |
+
+---
+
+## Database Schema (MySQL)
+
+```sql
+-- Users
+CREATE TABLE users (
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  phone VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Addresses
+CREATE TABLE addresses (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id),
+  label VARCHAR(50),
+  street TEXT NOT NULL,
+  city VARCHAR(100) NOT NULL,
+  country VARCHAR(100) NOT NULL,
+  postal_code VARCHAR(20) NOT NULL,
+  is_default BOOLEAN DEFAULT FALSE
+);
+
+-- Products (one row per shoe model)
+CREATE TABLE products (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  brand VARCHAR(100),
+  style ENUM('sneakers','heels','boots','sandals','loafers','flats','platforms','mules'),
+  heel_height ENUM('flat','low','mid','high','platform'),
+  material VARCHAR(100),
+  base_price DECIMAL(10,2) NOT NULL,
+  category VARCHAR(100),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Product Images
+CREATE TABLE product_images (
+  id VARCHAR(36) PRIMARY KEY,
+  product_id VARCHAR(36) REFERENCES products(id),
+  url VARCHAR(500) NOT NULL,
+  alt_text VARCHAR(255),
+  is_primary BOOLEAN DEFAULT FALSE,
+  sort_order INT DEFAULT 0
+);
+
+-- SKUs (one row per size + colour combination)
+CREATE TABLE skus (
+  id VARCHAR(36) PRIMARY KEY,
+  product_id VARCHAR(36) REFERENCES products(id),
+  size_eu DECIMAL(4,1) NOT NULL,
+  size_us DECIMAL(4,1),
+  size_uk DECIMAL(4,1),
+  colour VARCHAR(50) NOT NULL,
+  colour_hex VARCHAR(7),
+  stock_quantity INT DEFAULT 0,
+  price_override DECIMAL(10,2),
+  sku_code VARCHAR(100) UNIQUE NOT NULL
+);
+
+-- Orders
+CREATE TABLE orders (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id),
+  status ENUM('pending','confirmed','shipped','delivered','cancelled'),
+  total DECIMAL(10,2) NOT NULL,
+  shipping_address_id VARCHAR(36) REFERENCES addresses(id),
+  tracking_number VARCHAR(100),
+  carrier VARCHAR(100),
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Order Items
+CREATE TABLE order_items (
+  id VARCHAR(36) PRIMARY KEY,
+  order_id VARCHAR(36) REFERENCES orders(id),
+  sku_id VARCHAR(36) REFERENCES skus(id),
+  quantity INT NOT NULL,
+  unit_price DECIMAL(10,2) NOT NULL
+);
+
+-- Wishlist
+CREATE TABLE wishlist_items (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id),
+  product_id VARCHAR(36) REFERENCES products(id),
+  added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## gRPC Proto Definitions
+
+Define `.proto` files for:
+
+- **`OrderService`**
+  - `CreateOrder`, `GetOrder`, `ListOrdersByUser`, `UpdateOrderStatus`, `CancelOrder`
+
+- **`InventoryService`**
+  - `GetProduct`, `ListProducts`, `SearchProducts`, `GetSKU`, `ListSKUsByProduct`, `UpdateStock`, `CheckStock`
+
+- **`NotificationService`**
+  - `SendNotification`, `ListNotificationLogs`, `GetNotificationStatus`
+
+Generate TypeScript types from all `.proto` files using `grpc-tools` and `grpc_tools_node_protoc_ts`.
+
+---
+
+## GraphQL Schema (Gateway)
+
+```graphql
+type Product {
+  id: ID!
+  name: String!
+  brand: String
+  description: String
+  style: String
+  heelHeight: String
+  material: String
+  basePrice: Float!
+  images: [ProductImage!]!
+  skus: [SKU!]!
+}
+
+type SKU {
+  id: ID!
+  sizeEU: Float!
+  sizeUS: Float
+  sizeUK: Float
+  colour: String!
+  colourHex: String
+  stockQuantity: Int!
+  price: Float!
+  skuCode: String!
+}
+
+type Order {
+  id: ID!
+  status: String!
+  total: Float!
+  items: [OrderItem!]!
+  createdAt: String!
+  trackingNumber: String
+  carrier: String
+}
+
+type Query {
+  products(style: String, heelHeight: String, minPrice: Float, maxPrice: Float, size: Float, colour: String, search: String, limit: Int, offset: Int): [Product!]!
+  product(id: ID!): Product
+  order(id: ID!): Order
+  myOrders: [Order!]!
+  myWishlist: [Product!]!
+}
+
+type Mutation {
+  register(email: String!, password: String!, fullName: String!): AuthPayload!
+  login(email: String!, password: String!): AuthPayload!
+  placeOrder(items: [OrderItemInput!]!, addressId: ID!): Order!
+  cancelOrder(orderId: ID!): Order!
+  addToWishlist(productId: ID!): Boolean!
+  removeFromWishlist(productId: ID!): Boolean!
+  saveAddress(input: AddressInput!): Address!
+}
+```
+
+---
+
+## Monorepo Structure
+
+```
+/
+├── client/                          # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/              # Reusable UI components
+│   │   │   ├── ui/                  # shadcn/ui base components
+│   │   │   ├── ProductCard/
+│   │   │   ├── SizeSelector/
+│   │   │   ├── ColourSwatches/
+│   │   │   ├── FilterSidebar/
+│   │   │   └── SizeGuideModal/
+│   │   ├── pages/                   # Route-level page components
+│   │   ├── store/                   # Zustand stores (cart, auth, wishlist)
+│   │   ├── graphql/                 # Apollo queries and mutations
+│   │   ├── hooks/                   # Custom React hooks
+│   │   └── utils/
+│   └── tailwind.config.ts
+│
+├── gateway/                         # API Gateway
+│   ├── src/
+│   │   ├── graphql/                 # Apollo schema + resolvers
+│   │   ├── rest/                    # Express REST routes
+│   │   ├── grpc/                    # gRPC client connections
+│   │   └── middleware/              # Auth, rate limiting, validation
+│
+├── services/
+│   ├── order/                       # Order microservice
+│   │   ├── src/
+│   │   │   ├── grpc/                # gRPC server handlers
+│   │   │   ├── kafka/               # Producers and consumers
+│   │   │   ├── db/                  # MySQL queries and migrations
+│   │   │   └── validators/
+│   │
+│   ├── inventory/                   # Inventory microservice
+│   │   ├── src/
+│   │   │   ├── grpc/
+│   │   │   ├── kafka/
+│   │   │   ├── db/
+│   │   │   └── validators/
+│   │
+│   └── notification/                # Notification microservice
+│       ├── src/
+│       │   ├── kafka/               # Event consumers
+│       │   ├── store/               # lowdb JSON store
+│       │   └── templates/           # Email/SMS message templates
+│
+├── proto/                           # Shared .proto definitions
+│   ├── order.proto
+│   ├── inventory.proto
+│   └── notification.proto
+│
+├── shared/                          # Shared types, zod schemas, constants
+│   ├── types/
+│   ├── schemas/
+│   └── constants/                   # Shoe sizes, styles, heel heights
+│
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
+
+---
+
+## Seed Data Requirements
+
+Populate the database with realistic sample data:
+
+- **20 shoe products** across all styles (heels, boots, sneakers, sandals, loafers, flats)
+- **Brands:** mix of 5 fictional brands (e.g. Velara, Luxestep, NoveFoot, Stride & Grace, Orla)
+- **Each product:** 3–4 colour variants × sizes EU 35–42 = ~24 SKUs per product
+- **Pricing range:** €29 (basic flats) to €249 (luxury heeled boots)
+- **2 test user accounts:** `test@solehr.com` / `admin@solehr.com` (password: `Test1234!`)
+- **3 pre-existing orders** per test user in various statuses
+
+---
+
+## Infrastructure & DevOps
+
+- **`docker-compose.yml`** — orchestrates:
+  - MySQL 8.0
+  - Kafka + Zookeeper
+  - Order Service
+  - Inventory Service
+  - Notification Service
+  - API Gateway
+  - React client (with Vite hot reload)
+- **`.env.example`** — documents all required environment variables per service
+- **Health check endpoint** on every service: `GET /health`
+- **Graceful shutdown** on all Node.js services (handles SIGTERM, SIGINT)
+- **Database migrations** using a simple `migrate.ts` script (no ORM required)
+
+---
+
+## Libraries & Dependencies
+
+| Layer | Libraries |
+|---|---|
+| Frontend | `react`, `react-router-dom`, `@apollo/client`, `axios`, `zustand`, `tailwindcss`, `shadcn/ui`, `zod`, `lucide-react` |
+| Gateway | `express`, `apollo-server-express`, `@grpc/grpc-js`, `@grpc/proto-loader`, `jsonwebtoken`, `express-rate-limit`, `zod` |
+| Microservices | `@grpc/grpc-js`, `kafkajs`, `mysql2`, `lowdb`, `zod` |
+| Shared tooling | `typescript`, `ts-node`, `nodemon`, `eslint`, `prettier` |
+
+---
+
+## End-to-End Flow to Implement
+
+> Customer browses shoe catalogue → filters by size 38 and heel height "high" → opens product detail → selects colour and size → adds to cart → proceeds to checkout → submits order → Order Service validates stock per SKU → saves order in MySQL → publishes `order.placed` to Kafka → Inventory Service decrements stock for that SKU → if stock drops to ≤ 3, publishes `stock.low` → Notification Service sends order confirmation email and logs it → client shows order confirmation page with estimated delivery.
+
+---
+
+## Deliverables Checklist
+
+- [ ] Full monorepo with all services scaffolded and runnable
+- [ ] `docker-compose.yml` with one-command startup (`docker-compose up`)
+- [ ] MySQL schema with full seed data (20 products, SKUs, 2 users, 3 orders each)
+- [ ] All `.proto` files with generated TypeScript types
+- [ ] Kafka topics configured with producer/consumer logic for all 8 events
+- [ ] GraphQL schema with all queries and mutations implemented
+- [ ] All 10 React pages built and connected to the API
+- [ ] Shoe-specific UI components: size selector, colour swatches, size guide modal, filter sidebar
+- [ ] JWT auth flow: register, login, protected routes (account, checkout, wishlist)
+- [ ] Low-stock and out-of-stock UI states on product detail and cart
+- [ ] `README.md` with architecture diagram, setup steps, env variable reference, and sample API calls

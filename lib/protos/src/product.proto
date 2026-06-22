@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package product;
+
+service ProductService {
+  rpc ListProducts (ListProductsRequest) returns (ListProductsResponse);
+  rpc GetProduct (GetProductRequest) returns (ProductDetail);
+  rpc GetCatalogueStats (Empty) returns (CatalogueStats);
+  rpc GetFeaturedProducts (LimitRequest) returns (ProductList);
+  rpc GetNewArrivals (LimitRequest) returns (ProductList);
+  rpc GetOnSaleProducts (LimitRequest) returns (ProductList);
+}
+
+message Empty {}
+
+message LimitRequest {
+  int32 limit = 1;
+}
+
+message ListProductsRequest {
+  optional string style = 1;
+  optional string heel_height = 2;
+  optional string brand = 3;
+  optional double min_price = 4;
+  optional double max_price = 5;
+  optional double size_eu = 6;
+  optional string colour = 7;
+  optional string search = 8;
+  optional string sort = 9;
+  int32 limit = 10;
+  int32 offset = 11;
+}
+
+message ProductSummary {
+  int32 id = 1;
+  string name = 2;
+  optional string brand = 3;
+  string style = 4;
+  optional string heel_height = 5;
+  double base_price = 6;
+  double min_price = 7;
+  double max_price = 8;
+  optional double sale_price = 9;
+  optional string primary_image = 10;
+  int32 colour_count = 11;
+  optional bool is_new = 12;
+  optional bool is_featured = 13;
+}
+
+message ListProductsResponse {
+  repeated ProductSummary items = 1;
+  int32 total = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message ProductList {
+  repeated ProductSummary items = 1;
+}
+
+message GetProductRequest {
+  int32 id = 1;
+}
+
+message ProductDetail {
+  int32 id = 1;
+  string name = 2;
+  optional string brand = 3;
+  optional string description = 4;
+  string style = 5;
+  optional string heel_height = 6;
+  optional string material = 7;
+  double base_price = 8;
+  optional string category = 9;
+  optional bool is_active = 10;
+  optional bool is_new = 11;
+  optional bool is_featured = 12;
+  repeated Image images = 13;
+  repeated Sku skus = 14;
+}
+
+message Image {
+  int32 id = 1;
+  string url = 2;
+  optional string alt_text = 3;
+  bool is_primary = 4;
+  int32 sort_order = 5;
+}
+
+message Sku {
+  int32 id = 1;
+  int32 product_id = 2;
+  double size_eu = 3;
+  optional double size_us = 4;
+  optional double size_uk = 5;
+  string colour = 6;
+  optional string colour_hex = 7;
+  int32 stock_quantity = 8;
+  double price = 9;
+  string sku_code = 10;
+}
+
+message CatalogueStats {
+  repeated string brands = 1;
+  repeated string styles = 2;
+  repeated string heel_heights = 3;
+  repeated double available_sizes = 4;
+  repeated string colours = 5;
+  double min_price = 6;
+  double max_price = 7;
+}
