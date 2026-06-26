@@ -1,10 +1,10 @@
-# 👠 Sole Sanctuary — Women's Shoe Store
+# Sole Sanctuary — Women's Shoe Store
 
 A full-stack, event-driven microservices e-commerce platform for women's footwear, built with TypeScript, gRPC, Apache Kafka, and a React frontend.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Project Overview](#-project-overview)
 2. [Main Functionalities](#-main-functionalities)
@@ -21,7 +21,7 @@ A full-stack, event-driven microservices e-commerce platform for women's footwea
 
 ---
 
-## 🎯 Project Overview
+## Project Overview
 
 **Sole Sanctuary** is a modern women's shoe e-commerce platform built using a **microservices architecture**. The system is designed to be modular, scalable, and resilient, with each business domain handled by an independent, isolated service. Services communicate synchronously via **gRPC** for real-time queries and asynchronously via **Apache Kafka** for event-driven business workflows.
 
@@ -29,7 +29,7 @@ The project demonstrates a real-world distributed system with user authenticatio
 
 ---
 
-## ✅ Main Functionalities
+## Main Functionalities
 
 | Feature | Description |
 |---|---|
@@ -48,7 +48,7 @@ The project demonstrates a real-world distributed system with user authenticatio
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 The system follows a **microservices architecture** with clear separation of concerns:
 
@@ -89,7 +89,7 @@ The system follows a **microservices architecture** with clear separation of con
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 | Layer | Technology | Purpose |
@@ -121,9 +121,9 @@ The system follows a **microservices architecture** with clear separation of con
 
 ---
 
-## 📦 Microservices
+## Microservices
 
-### 1. 🔐 Auth Microservice (`microservice-auth`)
+### 1. Auth Microservice (`microservice-auth`)
 **Port:** `50051` | **Protocol:** gRPC | **Database:** `auth.db` (SQLite)
 
 Handles all user identity and authentication operations.
@@ -136,7 +136,7 @@ Handles all user identity and authentication operations.
 
 ---
 
-### 2. 🛍️ Product Microservice (`microservice-product`)
+### 2. Product Microservice (`microservice-product`)
 **Port:** `50052` | **Protocol:** gRPC + Kafka (Consumer) | **Database:** `product.db` (SQLite)
 
 Manages the entire product catalogue and acts as the **Kafka consumer** for inventory management.
@@ -154,7 +154,7 @@ Manages the entire product catalogue and acts as the **Kafka consumer** for inve
 
 ---
 
-### 3. 📦 Order Microservice (`microservice-order`)
+### 3. Order Microservice (`microservice-order`)
 **Port:** `50053` | **Protocol:** gRPC + Kafka (Producer) | **Database:** RxDB (in-memory)
 
 Manages orders, wishlists, and delivery addresses. Acts as the **Kafka producer** for order events.
@@ -174,7 +174,7 @@ Manages orders, wishlists, and delivery addresses. Acts as the **Kafka producer*
 
 ---
 
-## 🌐 API Gateway
+## API Gateway
 
 **Port:** `3000` | **Framework:** Express.js
 
@@ -254,7 +254,7 @@ The Order service does not need to know about the Product service's database to 
 
 ---
 
-## 🗃️ Database Design
+## Database Design
 
 The system uses two physically separated SQLite databases to enforce the service boundary between authentication and product data.
 
@@ -326,7 +326,7 @@ The Order service uses RxDB for document-style storage (orders, addresses, wishl
 
 ---
 
-## 🔄 End-to-End Flows
+## End-to-End Flows
 
 ### Flow 1: User Registration & Login
 ```
@@ -367,7 +367,7 @@ Frontend → GET /api/orders (with JWT)
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 sole-sanctuary/
@@ -430,7 +430,7 @@ sole-sanctuary/
 
 ---
 
-## 🚀 How to Run the Project
+## How to Run the Project
 
 ### Prerequisites
 
@@ -501,7 +501,7 @@ All services will start automatically:
 
 ---
 
-## 🔮 Possible Future Improvements
+## Possible Future Improvements
 
 ### Architecture & Infrastructure
 - **Docker Compose** — Containerize all services and Kafka with a single `docker-compose up` command for reproducible deployments.
